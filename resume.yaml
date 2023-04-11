@@ -2,6 +2,13 @@ name: Jane Doe
 phone: '123.456.7890'
 email: janedoe@xyzuniversity.edu
 linkedin: 'https://www.linkedin.com/in/jane-doe'
+github: https://github.com/Jtth3brick
+
+qr:
+  include: true
+  link: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+  dim: 100
+
 education:
   - institution: XYZ University
     location: Lorem, Ipsum

@@ -1,6 +1,7 @@
 import yaml
 import argparse
 from fpdf import FPDF
+from qr_code import create_qr_code
 
 # Load YAML data
 with open('resume.yaml', 'r') as file:
@@ -17,6 +18,7 @@ SUBHEADING_FONT_SIZE = int(12 * args.size)
 BODY_FONT_SIZE = int(10 * args.size)
 LINE_SPACING = 1.5 * args.size
 CELL_HEIGHT = 5 * args.size
+qr_dim = data['qr']['dim'] * 0.3 *  args.size
 
 def makeHeader(fpdf, name):
     fpdf.set_text_color(31, 73, 125)
@@ -45,7 +47,7 @@ pdf.set_font('Arial', '', BODY_FONT_SIZE)
 
 # Add contact info
 pdf.set_text_color(0, 0, 0)
-contact_info = f"{data['phone']} | {data['email']} | {data['linkedin']}"
+contact_info = f"{data['phone']} | {data['email']} | {data['linkedin']} | {data['github']}"
 contact_width = pdf.get_string_width(contact_info)
 pdf.multi_cell(0, CELL_HEIGHT, contact_info, align='C')
 pdf.ln(LINE_SPACING * 2)
@@ -112,6 +114,14 @@ for skill in data['skills']:
         pdf.set_font('Arial', '', BODY_FONT_SIZE) # Set regular font for skills
         pdf.multi_cell(0, CELL_HEIGHT, f"{skill[category]}")
 pdf.ln(LINE_SPACING)
+
+# Add qr code
+if data['qr']['include']:
+    qr_file_path = 'qr.png'
+    qr_link = data['qr']['link']
+    create_qr_code()
+    pdf.image(qr_file_path, x=pdf.w-qr_dim-10, y=pdf.h-qr_dim-10, w=qr_dim, h=qr_dim)
+
 
 # Generate PDF content
 pdf_content = pdf.output(dest='S').encode('latin-1')
