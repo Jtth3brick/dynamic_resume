@@ -1,9 +1,9 @@
 import qrcode
 import yaml
 
-def create_qr_code():
+def create_qr_code(yaml_name):
     # Load YAML file
-    with open('resume.yaml', 'r') as f:
+    with open(yaml_name, 'r') as f:
         resume_yaml = yaml.safe_load(f)
     # Get QR code link and dimension
     qr_link = resume_yaml['qr']['link']

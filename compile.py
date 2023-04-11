@@ -2,15 +2,28 @@ import yaml
 import argparse
 from fpdf import FPDF
 from qr_code import create_qr_code
-
-# Load YAML data
-with open('resume.yaml', 'r') as file:
-    data = yaml.safe_load(file)
+import os
 
 # Command-line arguments
 parser = argparse.ArgumentParser(description='Generate resume PDF with custom size')
 parser.add_argument('--size', type=float, default=1.0, help='Multiplier for font sizes and line spacing')
+parser.add_argument('--data', action='store_true', help='Set current working directory to data folder')
 args = parser.parse_args()
+
+# Set current working directory to data folder, if --data flag is set
+if args.data:
+    os.chdir('./data')
+    yaml_name = 'resume.yaml'
+    output_name = 'resume.pdf'
+else:
+    yaml_name = 'example_resume.yaml'
+    output_name = 'example_resume.pdf'
+    os.chdir('./example_data')
+
+# Load YAML data
+with open(yaml_name, 'r') as file:
+    data = yaml.safe_load(file)
+
 
 # Set font sizes and line spacing based on the size argument
 HEADING_FONT_SIZE = int(24 * args.size)
@@ -119,7 +132,7 @@ pdf.ln(LINE_SPACING)
 if data['qr']['include']:
     qr_file_path = 'qr.png'
     qr_link = data['qr']['link']
-    create_qr_code()
+    create_qr_code(yaml_name)
     pdf.image(qr_file_path, x=pdf.w-qr_dim-10, y=pdf.h-qr_dim-10, w=qr_dim, h=qr_dim)
 
 
@@ -127,5 +140,5 @@ if data['qr']['include']:
 pdf_content = pdf.output(dest='S').encode('latin-1')
 
 # Write PDF to file
-with open('resume.pdf', 'wb') as file:
+with open(output_name, 'wb') as file:
     file.write(pdf_content)

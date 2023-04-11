@@ -25,15 +25,11 @@ Note: This Git repository requires Python 3.x to be installed on your system. If
 
 ## Usage
 
-First fill out resume.yaml
+Copy `example_resume.yaml` into `./data` folder, fill it out and name it `resume.yaml`
 
-Run
+Run `python3 compile.py --size .95 --data` and adjust size parameter to fit (auto-adjust coming soon)
 
-```
-python3 compile.py --size 0.95
-```
-
-A compiled pdf should appear in the directory
+Output pdf will be in data folder
 
 ## TODO
 
