@@ -19,6 +19,7 @@ To install these packages, you can use pip, a package manager for Python. Simply
 pip install pyyaml
 pip install argparse
 pip install fpdf
+pip install qrcode
 ```
 
 Note: This Git repository requires Python 3.x to be installed on your system. If you haven't installed it yet, please visit the official Python website and follow the installation instructions for your platform.

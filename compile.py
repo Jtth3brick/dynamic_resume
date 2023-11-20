@@ -1,144 +1,144 @@
 import yaml
 import argparse
 from fpdf import FPDF
-from qr_code import create_qr_code
 import os
 
-# Command-line arguments
-parser = argparse.ArgumentParser(description='Generate resume PDF with custom size')
-parser.add_argument('--size', type=float, default=1.0, help='Multiplier for font sizes and line spacing')
-parser.add_argument('--data', action='store_true', help='Set current working directory to data folder')
-args = parser.parse_args()
+class ResumePDF:
+    def __init__(self, data, size):
+        self.data = data
+        self.size = size
+        self.heading_font_size = int(24 * self.size)
+        self.subheading_font_size = int(12 * self.size)
+        self.body_font_size = int(10 * self.size)
+        self.cell_height = 5 * self.size
+        self.big_line = 1.5 * self.size
+        self.small_line = 0.5 * self.size
 
-# Set current working directory to data folder, if --data flag is set
-if args.data:
-    os.chdir('./data')
+        self.initialize_pdf()
+        
+        self.add_name(self.data['name'])
+        self.add_contact(self.data['contact'])
+        for section in self.data['sections']:
+            self.add_section(section)
+        
+        if self.data.get('qr', {}).get('include', False):
+            self.add_qr_code(self.data['qr'])  # Make sure to define this method in the class
+
+        self.generate()
+
+    def initialize_pdf(self):
+        self.pdf = FPDF()
+        self.pdf.add_page()
+        self.pdf.set_draw_color(31, 73, 125)
+
+    def add_name(self, name):
+        self.pdf.set_font('Arial', 'B', self.heading_font_size)
+        self.pdf.set_text_color(31, 73, 125)
+        name_width = self.pdf.get_string_width(name)
+        self.pdf.cell(0, 10, name, align='C', ln=1)
+    
+    def add_header(self, header_title):
+        self.pdf.set_text_color(31, 73, 125)
+        self.pdf.set_font('Arial', 'B', self.subheading_font_size)
+        self.pdf.cell(0, self.body_font_size, header_title, ln=1)
+        self.pdf.set_font('Arial', '', self.body_font_size)
+        self.pdf.line(10, self.pdf.y, self.pdf.w - 10, self.pdf.y)
+
+        self.pdf.set_text_color(0, 0, 0)
+        self.pdf.set_font('Arial', '', self.body_font_size)
+
+    def add_contact(self, contact_data):
+        self.pdf.set_font('Arial', '', self.body_font_size)
+        self.pdf.set_text_color(0, 0, 0)
+
+        if len(contact_data['contents']) < 1:
+            raise ValueError("Contact data is empty")
+        contact_info = contact_data['contents'][0]
+        for i in range(1, len(contact_data['contents'])):
+            contact_info = contact_info + f" {contact_data['rowSeparator']} {contact_data['contents'][i]}"
+        
+        align = 'C' if 'align' in contact_data and contact_data['align'] == 'center' else 'L'
+        self.pdf.multi_cell(0, self.body_font_size, contact_info, align=align)
+
+    def add_section(self, section):
+        if section['addHeader']:
+            self.add_header(section['name'])
+
+        for item in section['items']:
+            self.add_subsection(item)
+
+    def add_subsection(self, subsection):
+        if 'title' in subsection:
+            title = subsection['title']
+            if 'description' in subsection:
+                description = subsection['description']
+            else:
+                description = None
+            if 'rightAlign' in subsection:
+                rightAlign = subsection['rightAlign']
+            else:
+                rightAlign = None
+
+            self.add_subsection_title(title, description, rightAlign)
+        
+        if 'contentType' in subsection and subsection['contentType'] == 'list':
+            self.add_subsection_list(subsection['contents'])
+        elif 'contentType' in subsection and subsection['contentType'] == 'paragraph':
+            self.add_subsection_paragraph(subsection['contents'])
+        elif 'contentType' in subsection:
+            raise ValueError(f"{subsection['contentType']} is unrecognized as content type.")
+        
+    def add_subsection_title(self, title, description, rightAlign):
+        self.pdf.set_font('Arial', 'B', self.body_font_size)  # Set bold font for project names
+        self.pdf.cell(self.pdf.get_string_width(title), self.cell_height, title)
+        self.pdf.set_font('Arial', '', self.body_font_size)  # Set regular font for project language
+        if description and rightAlign:
+            self.pdf.cell(0, self.cell_height, f" | {description}")
+            self.pdf.cell(0, self.cell_height, rightAlign, align='R', ln=1)
+        elif description:
+            self.pdf.cell(0, self.cell_height, f" | {description}", ln=1)
+        elif rightAlign:
+            self.pdf.cell(0, self.cell_height, rightAlign, align='R', ln=1)
+        
+    
+    def add_subsection_list(self, contents):
+        for content in contents:
+            self.pdf.cell(5, self.cell_height, '-', ln=0)
+            self.pdf.multi_cell(0, self.cell_height, content, align='J')
+        self.pdf.ln(self.small_line)
+    
+    def add_subsection_paragraph(self, contents):
+        coursework_list = ', '.join(contents[:-1]) + ', and ' + contents[-1] + '.'
+        self.pdf.multi_cell(0, self.cell_height, coursework_list, align='J')
+
+    def generate(self):
+        self.pdf.output('resume.pdf')
+
+def parse_arguments():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Generate resume PDF with custom size')
+    parser.add_argument('--size', type=float, default=1.0, help='Multiplier for font sizes and line spacing')
+    parser.add_argument('--data', action='store_true', help='Set current working directory to data folder')
+    args = parser.parse_args()
+    return args
+
+def load_yaml_data(file_path):
+    # Load YAML data from a file
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+    return data
+
+def main():
+    args = parse_arguments()
+    if args.data:
+        os.chdir('./data')
+    else:
+        os.chdir('./example_data')
+    
     yaml_name = 'resume.yaml'
-    output_name = 'resume.pdf'
-else:
-    yaml_name = 'example_resume.yaml'
-    output_name = 'example_resume.pdf'
-    os.chdir('./example_data')
+    data = load_yaml_data(yaml_name)
 
-# Load YAML data
-with open(yaml_name, 'r') as file:
-    data = yaml.safe_load(file)
+    ResumePDF(data, args.size)
 
-
-# Set font sizes and line spacing based on the size argument
-HEADING_FONT_SIZE = int(24 * args.size)
-SUBHEADING_FONT_SIZE = int(12 * args.size)
-BODY_FONT_SIZE = int(10 * args.size)
-LINE_SPACING = 1.5 * args.size
-CELL_HEIGHT = 5 * args.size
-qr_dim = data['qr']['dim'] * 0.3 *  args.size
-
-def makeHeader(fpdf, name):
-    fpdf.set_text_color(31, 73, 125)
-    fpdf.set_font('Arial', 'B', SUBHEADING_FONT_SIZE)
-    fpdf.cell(0, CELL_HEIGHT, name, ln=1)
-    fpdf.set_font('Arial', '', BODY_FONT_SIZE)
-    fpdf.line(10, pdf.y, pdf.w - 10, pdf.y)
-    fpdf.line(10, pdf.y, pdf.w - 10, pdf.y)
-    fpdf.ln(LINE_SPACING)
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font('Arial', '', BODY_FONT_SIZE)
-
-# Create PDF document
-pdf = FPDF()
-pdf.add_page()
-
-pdf.set_draw_color(31, 73, 125)
-
-# Set font and size for headings and body text
-pdf.set_font('Arial', 'B', HEADING_FONT_SIZE)
-pdf.set_text_color(31, 73, 125)
-# Center name
-name_width = pdf.get_string_width(data['name'])
-pdf.cell(0, 10, data['name'], align='C', ln=1)
-pdf.set_font('Arial', '', BODY_FONT_SIZE)
-
-# Add contact info
-pdf.set_text_color(0, 0, 0)
-contact_info = f"{data['phone']} | {data['email']} | {data['linkedin']} | {data['github']}"
-contact_width = pdf.get_string_width(contact_info)
-pdf.multi_cell(0, CELL_HEIGHT, contact_info, align='C')
-pdf.ln(LINE_SPACING * 2)
-
-# Add education section
-makeHeader(pdf, 'EDUCATION')
-pdf.cell(pdf.get_string_width(f"{data['education'][0]['institution']} | {data['education'][0]['location']}"), CELL_HEIGHT, f"{data['education'][0]['institution']} | {data['education'][0]['location']}", ln=0)
-
-# Include the appropriate GPA based on gpa_type
-gpa_type = data['education'][0]['gpa_type']
-if gpa_type == 'general_gpa':
-    gpa_label = 'GPA'
-    gpa_value = data['education'][0]['general_gpa']
-elif gpa_type == 'technical_gpa':
-    gpa_label = 'Technical GPA'
-    gpa_value = data['education'][0]['technical_gpa']
-pdf.cell(0, CELL_HEIGHT, f"; {gpa_label}: {gpa_value}", ln=0)
-
-pdf.cell(0, CELL_HEIGHT, f"Grad: {data['education'][0]['graduation']}", align='R', ln=1)
-for degree in data['education'][0]['degree']:
-    pdf.cell(5)
-    pdf.cell(0, CELL_HEIGHT, f"- {degree}", ln=1)
-pdf.ln(LINE_SPACING)
-
-# Add relevant coursework section
-makeHeader(pdf, 'RELEVANT COURSEWORK')
-coursework_list = ', '.join(data['education'][0]['coursework'][:-1]) + ', and ' + data['education'][0]['coursework'][-1] + '.'
-pdf.multi_cell(0, 5, coursework_list, align='J')
-pdf.ln(LINE_SPACING)
-
-
-# Add experiences section
-makeHeader(pdf, 'EXPERIENCES')
-for exp in data['experience']:
-    pdf.set_font('Arial', 'B', BODY_FONT_SIZE)  # Set bold font for company names
-    pdf.cell(pdf.get_string_width(exp['company']), CELL_HEIGHT, exp['company'])
-    pdf.set_font('Arial', '', BODY_FONT_SIZE)  # Set regular font for position
-    pdf.cell(0, CELL_HEIGHT, f" | {exp['position']}")
-    pdf.cell(0, CELL_HEIGHT, f"{exp['start']} - {exp['end']}", align='R', ln=1)
-    for resp in exp['responsibilities']:
-        pdf.cell(5, CELL_HEIGHT, '-', ln=0)
-        pdf.multi_cell(0, CELL_HEIGHT, resp, align='J')
-    pdf.ln(LINE_SPACING)
-
-# Add projects section
-makeHeader(pdf, 'PROJECTS')
-for project in data['projects']:
-    pdf.set_font('Arial', 'B', BODY_FONT_SIZE)  # Set bold font for project names
-    pdf.cell(pdf.get_string_width(project['name']), CELL_HEIGHT, project['name'])
-    pdf.set_font('Arial', '', BODY_FONT_SIZE)  # Set regular font for project language
-    pdf.cell(0, CELL_HEIGHT, f" | {project['language']}")
-    pdf.cell(0, CELL_HEIGHT, f"{project['start']} - {project['end']}", align='R', ln=1)
-    for desc in project['description']:
-        pdf.cell(5, 5, '-', ln=0)
-        pdf.multi_cell(0, CELL_HEIGHT, desc, align='J')
-    pdf.ln(LINE_SPACING)
-
-# Add skills section
-makeHeader(pdf, 'SKILLS')
-for skill in data['skills']:
-    for category in skill:
-        pdf.set_font('Arial', 'B', BODY_FONT_SIZE) # Set bold font for category
-        pdf.cell(pdf.get_string_width(f"{category}: "), CELL_HEIGHT, f"{category}: ")
-        pdf.set_font('Arial', '', BODY_FONT_SIZE) # Set regular font for skills
-        pdf.multi_cell(0, CELL_HEIGHT, f"{skill[category]}")
-pdf.ln(LINE_SPACING)
-
-# Add qr code
-if data['qr']['include']:
-    qr_file_path = 'qr.png'
-    qr_link = data['qr']['link']
-    create_qr_code(yaml_name)
-    pdf.image(qr_file_path, x=pdf.w-qr_dim-10, y=pdf.h-qr_dim-10, w=qr_dim, h=qr_dim)
-
-
-# Generate PDF content
-pdf_content = pdf.output(dest='S').encode('latin-1')
-
-# Write PDF to file
-with open(output_name, 'wb') as file:
-    file.write(pdf_content)
+if __name__ == "__main__":
+    main()
